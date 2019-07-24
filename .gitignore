@@ -1,6 +1,11 @@
-/data/*
-!/data/config/default.json
+# input data, saved log, checkpoints
+.tmp
+/data/saved/
+/data/config/*
+/data/corpora/*
+!data/config/default.json
 !/data/corpora/yelp/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -104,13 +109,6 @@ ENV/
 # mypy
 .mypy_cache/
 
-# input data, saved log, checkpoints
-.tmp
-*.pkl
-!*.json
-data/saved/
-data/corpora/
-data/preprocessor/
 
 # editor, os cache directory
 .vscode/

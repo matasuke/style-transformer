@@ -16,6 +16,8 @@ gensim = "*"
 tensorboardX = "*"
 torch = "==1.1.0"
 nltk = "*"
+"fastText" = {git = "https://github.com/facebookresearch/fastText.git", ref = "master"}
+"kenlm" = {file = "https://github.com/kpu/kenlm/archive/master.zip"}
 
 [dev-packages]
 flake8 = "*"

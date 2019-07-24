@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-import fastText
+import fasttext
 from nltk.tokenize import word_tokenize
 from nltk.translate import bleu_score
 
@@ -92,7 +92,7 @@ class Evaluator:
 
         # load all of them above with required format.
         self.language_model = kenlm.Model(language_model_path.as_posix())
-        self.classifier = fastText.load_model(classification_model_path.as_posix())
+        self.classifier = fasttext.load_model(classification_model_path.as_posix())
 
         # concat label_prefix with style_label
         classifier_labels = self.classifier.get_labels()
@@ -337,7 +337,7 @@ class Evaluator:
         classifier_config: Dict[str, Any] = DEFAULT_CLASSIFIER_CONFIG,
     ) -> None:
         """
-        create language model by kenlm and classifier by fastText
+        create language model by kenlm and classifier by fasttext
 
         :param sentence_list: nested list of sentence, which is splitted based on style
         :param style_list: list of style corresponding to sentence_list
@@ -353,11 +353,11 @@ class Evaluator:
         More resources can be found here https://github.com/kpu/kenlm
         >>> bin/lmplz -o 5 < train_data.txt > output.bin
 
-        - about fastText
-        classification model by fastText can be trained like below this.
-        More resources can be found here https://github.com/facebookresearch/fastText
-        >>> import fastText
-        >>> model = fastText.train_supervised(
+        - about fasttext
+        classification model by fasttext can be trained like below this.
+        More resources can be found here https://github.com/facebookresearch/fasttext
+        >>> import fasttext
+        >>> model = fasttext.train_supervised(
                         'input.txt',
                         epoch=25,
                         lr=1.0,
@@ -403,9 +403,9 @@ class Evaluator:
             )
             lm_model.wait()
 
-        # train fastText classifier
+        # train fasttext classifier
         print("Training classifier...")
-        model = fastText.train_supervised(
+        model = fasttext.train_supervised(
             tmp_classifier_file_path.as_posix(),
             epoch=classifier_config["epoch"],
             lr=classifier_config["lr"],

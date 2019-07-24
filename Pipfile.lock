@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1e9c7a47fd6240b2d10711d57574d15947c915f26793d2fcbcf3980f32f92673"
+            "sha256": "dc71cf7dc534b8bc2fd12912437702c5d14cd4c2e13604d0698be305af9d9ca3"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -59,6 +59,10 @@
             ],
             "version": "==0.14"
         },
+        "fasttext": {
+            "git": "https://github.com/facebookresearch/fastText.git",
+            "ref": "40a77442a756ab160ae3465b26322f6e480405d9"
+        },
         "gensim": {
             "hashes": [
                 "sha256:025f5c72baf0ec64deb9c61c8d4d9269f4ec12913b968774d22cc0b046f9bfbc",
@@ -93,6 +97,9 @@
                 "sha256:bde2aef6f44302dfb30320115b17d030798de8c4110e28d5cf6cf91a7a31074c"
             ],
             "version": "==0.9.4"
+        },
+        "kenlm": {
+            "file": "https://github.com/kpu/kenlm/archive/master.zip"
         },
         "nltk": {
             "hashes": [

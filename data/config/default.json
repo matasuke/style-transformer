@@ -5,8 +5,6 @@
         "data_root": "./data/corpora/yelp/",
         "train_pos": "train.pos",
         "train_neg": "train.neg",
-        "dev_pos": "dev.pos",
-        "dev_neg": "dev.neg",
         "test_pos": "test.pos",
         "test_neg" :"test.neg",
         "min_freq": 3,
@@ -102,18 +100,26 @@
         "word_drop_prob": 0,
         "split_pretrain_data": false,
         "split_train_data": false,
-        "pos_update_rate": 0.99,
-        "neg_update_rate": 1.01,
+        "pos_update_rate": {
+            "self_factor": null,
+            "cycle_factor": null,
+            "adv_factor": null
+        },
+        "neg_update_rate": {
+            "self_factor": null,
+            "cycle_factor": null,
+            "adv_factor": null
+        },
         "factors": {
             "self_factor": 0.25,
             "cycle_factor": 0.5,
             "adv_factor": 1.0,
-            "pos_self_factor": 1.0,
-            "neg_self_factor": 0.1,
-            "pos_cycle_factor": 0.5,
-            "neg_cycle_factor": 0.5,
-            "pos_adv_factor": 1.0,
-            "neg_adv_factor": 1.0
+            "pos_self_factor": null,
+            "neg_self_factor": null,
+            "pos_cycle_factor": null,
+            "neg_cycle_factor": null,
+            "pos_adv_factor": null,
+            "neg_adv_factor": null
         }
     }
 }

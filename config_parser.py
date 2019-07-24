@@ -37,8 +37,9 @@ class ConfigParser:
         timestamp: bool = True,
     ):
         if "device" in args:
-            os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(args["device"])
-            self.device = [int(device) for device in args["device"]]
+            if args["device"] is not None:
+                os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(args["device"])
+                self.device = [int(device) for device in args["device"]]
 
         if args["resume"]:
             self.resume: Union[Path, None] = Path(args["resume"])
@@ -48,7 +49,7 @@ class ConfigParser:
             self.cfg_fname = Path(args["config"])
         else:
             msg_no_cfg = (
-                "Configuration file need to be specified."
+                "Configuration file need to be specified.\n"
                 "add -c config.json for example."
             )
             raise ValueError(msg_no_cfg)
