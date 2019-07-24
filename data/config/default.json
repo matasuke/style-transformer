@@ -1,0 +1,119 @@
+{
+    "name": "yelp",
+    "n_gpu": 1,
+    "data": {
+        "data_root": "./data/corpora/yelp/",
+        "train_pos": "train.pos",
+        "train_neg": "train.neg",
+        "dev_pos": "dev.pos",
+        "dev_neg": "dev.neg",
+        "test_pos": "test.pos",
+        "test_neg" :"test.neg",
+        "min_freq": 3,
+        "batch_size": 64,
+        "embed_size": 256,
+        "shuffle": "true",
+        "load_pretrained_embed": false,
+        "pretrained_embed_path": "embedding/"
+    },
+    "evaluator": {
+        "args": {
+            "text_paths": [
+                "data/corpora/yelp/train.pos",
+                "data/corpora/yelp/train.neg"
+            ],
+            "style_list": ["positive", "negative"],
+            "reference_paths": [
+                "data/corpora/yelp/reference.pos",
+                "data/corpora/yelp/reference.neg"
+            ],
+            "lm_config": {"n_order": 5},
+            "classifier_config": {
+                "epoch": 25,
+                "lr": 1.0,
+                "n_order": 2,
+                "verbose": 2,
+                "min_count": 1,
+                "label_prefix": "__style__"
+            }
+        },
+        "save_path": null
+    },
+    "arch_generator": {
+        "type": "StyleTransformer",
+        "args": {
+             "num_styles": 2,
+             "num_layers": 4,
+             "num_heads": 4,
+             "hidden_dim": 256,
+             "max_seq_len": 25,
+             "dropout": 0.0,
+             "load_pretrained_embed": false
+        }
+    },
+    "arch_discriminator": {
+        "type": "Discriminator",
+        "args": {
+             "num_styles": 2,
+             "num_layers": 4,
+             "num_heads": 4,
+             "hidden_dim": 256,
+             "max_seq_len": 25,
+             "dropout": 0.0,
+             "discriminator_method": "Multi",
+             "load_pretrained_embed": false
+        }
+    },
+    "generator_optimizer": {
+        "type": "Optim",
+        "args":{
+            "method":"adam",
+            "lr": 0.0001,
+            "max_grad_norm": 5,
+            "lr_scheduler": null,
+            "weight_decay": 0.0,
+            "lr_decay": 1.0,
+            "start_decay_at": null
+        }
+    },
+    "discriminator_optimizer": {
+        "type": "Optim",
+        "args": {
+            "method": "adam",
+            "lr": 0.0001,
+            "max_grad_norm": 5,
+            "lr_scheduler": null,
+            "weight_decay": 0.0,
+            "lr_decay": 1.0,
+            "start_decay_at": null
+        }
+    },
+    "trainer": {
+        "pretrain_generator_steps": 500,
+        "generator_steps" : 5,
+        "discriminator_steps": 10,
+        "save_dir": "data/saved/",
+        "evaluation_step": 25,
+        "log_step": 5,
+        "tensorboardX": true,
+        "log_dir": "data/saved/runs",
+        "drop_rate_config": [[1, 0]],
+        "temperature_config": [[1, 0]],
+        "word_drop_prob": 0,
+        "split_pretrain_data": false,
+        "split_train_data": false,
+        "pos_update_rate": 0.99,
+        "neg_update_rate": 1.01,
+        "factors": {
+            "self_factor": 0.25,
+            "cycle_factor": 0.5,
+            "adv_factor": 1.0,
+            "pos_self_factor": 1.0,
+            "neg_self_factor": 0.1,
+            "pos_cycle_factor": 0.5,
+            "neg_cycle_factor": 0.5,
+            "pos_adv_factor": 1.0,
+            "neg_adv_factor": 1.0
+        }
+    }
+}

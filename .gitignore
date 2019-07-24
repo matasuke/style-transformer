@@ -1,7 +1,6 @@
-data/
-zip/
-!data/config/default.json
-!data/yelp/
+/data/*
+!/data/config/default.json
+!/data/corpora/yelp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
