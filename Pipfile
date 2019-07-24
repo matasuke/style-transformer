@@ -11,12 +11,10 @@ pytest = "python -m pytest -vv"
 [packages]
 tqdm = "*"
 sentencepiece = "*"
-pillow = "*"
 pyyaml = "*"
 gensim = "*"
 tensorboardX = "*"
 torch = "==1.1.0"
-future = "*"
 nltk = "*"
 
 [dev-packages]
@@ -24,7 +22,6 @@ flake8 = "*"
 mypy = "*"
 jupyter = "*"
 pytest = "*"
-v = {editable = true,version = "*"}
 
 [requires]
 python_version = "3.7.0"

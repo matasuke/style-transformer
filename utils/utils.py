@@ -7,6 +7,12 @@ import torch
 def indice2text(
     indices: Union[List[List[int]], torch.Tensor], vocab, stop_eos: bool = True
 ):
+    """
+    convert list of tensor or nested list to list of text
+
+    :param indices: list of indice
+    :param vocab: vodabulary, which is created by torchtext
+    """
     if isinstance(indices, torch.Tensor):
         indices = indices.tolist()
 
@@ -19,43 +25,15 @@ def indice2text(
     for indice in indices:
         sample_indice = []
         for index in indice:
-            if index not in (eos_idx, unk_idx, pad_idx):
+            if stop_eos and index == eos_idx:
+                break
+            if index not in (unk_idx, pad_idx):
                 sample_indice.append(index)
         tokens = list(index2word[index] for index in sample_indice)
         tokens = " ".join(tokens)
         text.append(tokens)
 
     return text
-
-
-def tensor2text(vocab, tensor):
-    tensor = tensor.cpu().numpy()
-    text = []
-    index2word = vocab.itos
-    eos_idx = vocab.stoi["<eos>"]
-    unk_idx = vocab.stoi["<unk>"]
-    pad_idx = vocab.stoi["<pad>"]
-    # stop_idxs = [vocab.stoi["!"], vocab.stoi["。"], vocab.stoi["?"], vocab.stoi["."]]
-    stop_idxs = [vocab.stoi["。"]]
-    for sample in tensor:
-        sample_filtered = []
-        prev_token = None
-        for idx in list(sample):
-            if prev_token in stop_idxs:
-                break
-            if idx == unk_idx or idx == prev_token or idx == eos_idx or idx == pad_idx:
-                continue
-            prev_token = idx
-            sample_filtered.append(index2word[idx])
-
-        sample = " ".join(sample_filtered)
-        text.append(sample)
-
-    return text
-
-
-def calc_ppl(log_probs, tokens_mask):
-    return (log_probs.sum() / tokens_mask.sum()).exp()
 
 
 def word_shuffle(x, l, shuffle_len):
@@ -69,35 +47,6 @@ def word_shuffle(x, l, shuffle_len):
     scores = pos_idx.float() + ((1 - pad_mask) * noise + pad_mask) * shuffle_len
     x2 = x.clone()
     x2 = x2.gather(1, scores.argsort(1))
-
-    return x2
-
-
-def word_dropout_raw(x, l, unk_drop_prob, rand_drop_prob, vocab):
-    if not unk_drop_prob and not rand_drop_prob:
-        return x
-
-    assert unk_drop_prob + rand_drop_prob <= 1
-
-    noise = torch.rand(x.size(), dtype=torch.float).to(x.device)
-    pos_idx = torch.arange(x.size(1)).unsqueeze(0).expand_as(x).to(x.device)
-    token_mask = pos_idx < l.unsqueeze(1)
-
-    x2 = x.clone()
-
-    # drop to <unk> token
-    if unk_drop_prob:
-        unk_idx = vocab.stoi["<unk>"]
-        unk_drop_mask = (noise < unk_drop_prob) & token_mask
-        x2.masked_fill_(unk_drop_mask, unk_idx)
-
-    # drop to random_mask
-    if rand_drop_prob:
-        rand_drop_mask = (noise > 1 - rand_drop_prob) & token_mask
-        rand_tokens = torch.randint_like(x, len(vocab))
-        rand_tokens.masked_fill_(1 - rand_drop_mask, 0)
-        x2.masked_fill_(rand_drop_mask, 0)
-        x2 = x2 + rand_tokens
 
     return x2
 
@@ -119,34 +68,6 @@ def rand_dropout_(x, l, drop_prob, vocab_size):
     rand_tokens.masked_fill_(1 - rand_drop_mask, 0)
     x.masked_fill_(rand_drop_mask, 0)
     x += rand_tokens
-
-
-def word_dropout_new(x, l, unk_drop_fac, rand_drop_fac, drop_prob, vocab):
-    if not unk_drop_fac and not rand_drop_fac:
-        return x
-
-    assert unk_drop_fac + rand_drop_fac <= 1
-
-    batch_size = x.size(0)
-    unk_idx = vocab.stoi["<unk>"]
-    unk_drop_idx = int(batch_size * unk_drop_fac)
-    rand_drop_idx = int(batch_size * rand_drop_fac)
-
-    shuffle_idx = torch.argsort(torch.rand(batch_size))
-    orignal_idx = torch.argsort(shuffle_idx)
-
-    x2 = x.clone()
-    x2 = x2[shuffle_idx]
-
-    if unk_drop_idx:
-        unk_dropout_(x2[:unk_drop_idx], l[:unk_drop_idx], drop_prob, unk_idx)
-
-    if rand_drop_idx:
-        rand_dropout_(x2[-rand_drop_idx:], l[-rand_drop_idx:], drop_prob, len(vocab))
-
-    x2 = x2[orignal_idx]
-
-    return x2
 
 
 def word_dropout(x, l, drop_prob, unk_idx):

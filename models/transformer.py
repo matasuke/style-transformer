@@ -56,7 +56,8 @@ class StyleTransformer(nn.Module):
         batch_size = inp_tokens.size(0)
         max_enc_len = inp_tokens.size(1)
 
-        assert max_enc_len <= self.max_seq_len
+        msg = f"sequence length is exceeded, length: {max_enc_len} >= {self.max_seq_len}"
+        assert max_enc_len <= self.max_seq_len, msg
 
         pos_idx = torch.arange(self.max_seq_len).unsqueeze(
             0).expand((batch_size, -1))

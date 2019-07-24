@@ -19,7 +19,7 @@ class DatasetIterator(object):
                 yield batch_pos.text, batch_neg.text
 
 
-def load_dataset(config: ConfigParser, device):
+def load_dataset(config: ConfigParser, device: torch.device):
 
     data_config = config["data"]
     root = Path(data_config["data_root"])
@@ -27,7 +27,9 @@ def load_dataset(config: ConfigParser, device):
 
     def dataset_fn(name):
         return data.TabularDataset(
-            path=(root / name).as_posix(), format="tsv", fields=[("text", TEXT)]
+            path=(root / name).as_posix(),
+            format="tsv",
+            fields=[("text", TEXT)],
         )
 
     train_pos_set, train_neg_set = map(
@@ -52,22 +54,22 @@ def load_dataset(config: ConfigParser, device):
 
     vocab = TEXT.vocab
 
-    def dataiter_fn(dataset, train):
+    def dataiter_fn(dataset, shuffle: bool, repeat: bool):
         return data.BucketIterator(
             dataset=dataset,
             batch_size=data_config["batch_size"],
-            shuffle=train,
-            repeat=train,
+            shuffle=shuffle,
+            repeat=repeat,
             sort_key=lambda x: len(x.text),
             sort_within_batch=False,
             device=device,
         )
 
     train_pos_iter, train_neg_iter = map(
-        lambda x: dataiter_fn(x, True), [train_pos_set, train_neg_set]
+        lambda x: dataiter_fn(x, data_config["shuffle"], True), [train_pos_set, train_neg_set]
     )
     test_pos_iter, test_neg_iter = map(
-        lambda x: dataiter_fn(x, False), [test_pos_set, test_neg_set]
+        lambda x: dataiter_fn(x, False, False), [test_pos_set, test_neg_set]
     )
 
     train_iters = DatasetIterator(train_pos_iter, train_neg_iter)

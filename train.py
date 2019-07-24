@@ -1,11 +1,10 @@
-import numpy as np
-from typing import Dict
+from typing import Dict, List, Tuple
 
+import numpy as np
 import torch
 from torch import nn
-
-from evaluator import Evaluator
-from utils.utils import tensor2text, word_drop
+from utils.evaluator import Evaluator
+from utils.utils import indice2text, word_drop
 
 
 def get_lengths(tokens, eos_idx):
@@ -15,11 +14,7 @@ def get_lengths(tokens, eos_idx):
     return lengths
 
 
-def update_factor_rate(
-    factors: Dict,
-    pos_update_rate: Dict,
-    neg_update_rate: Dict,
-):
+def update_factor_rate(factors: Dict, pos_update_rate: Dict, neg_update_rate: Dict):
     # update pos factors:
     for target, update_rate in pos_update_rate.items():
         target = "pos_" + target
@@ -157,11 +152,7 @@ def f_step(
     loss_fn = nn.NLLLoss(reduction="none")
 
     def self_reconstruction(
-        input_tokens,
-        input_lengths,
-        input_styles,
-        input_mask,
-        self_factor,
+        input_tokens, input_lengths, input_styles, input_mask, self_factor
     ):
         batch_size = input_tokens.size(0)
         optimizer_F.zero_grad()
@@ -227,12 +218,7 @@ def f_step(
 
         return cyc_rec_loss, gen_soft_tokens, gen_lengths
 
-    def style_consistency(
-        gen_soft_tokens,
-        gen_lengths,
-        rev_styles,
-        adv_factor,
-    ):
+    def style_consistency(gen_soft_tokens, gen_lengths, rev_styles, adv_factor):
         batch_size = gen_soft_tokens.size(0)
 
         adv_log_porbs = model_D(gen_soft_tokens, gen_lengths, rev_styles)
@@ -247,8 +233,9 @@ def f_step(
         return adv_loss
 
     if split:
-        pos_tokens, neg_tokens, pos_lengths, neg_lengths, pos_raw_styles, neg_raw_styles = \
-            batch_preprocess(batch, pad_idx, eos_idx, split=True)
+        pos_tokens, neg_tokens, pos_lengths, neg_lengths, pos_raw_styles, neg_raw_styles = batch_preprocess(
+            batch, pad_idx, eos_idx, split=True
+        )
         pos_rev_styles = 1 - pos_raw_styles
         neg_rev_styles = 1 - neg_raw_styles
 
@@ -262,7 +249,7 @@ def f_step(
             pos_lengths,
             pos_raw_styles,
             pos_token_mask,
-            factors["pos_self_factor"]
+            factors["pos_self_factor"],
         )
         pos_slf_rec_loss.backward()
 
@@ -271,7 +258,7 @@ def f_step(
             neg_lengths,
             neg_raw_styles,
             neg_token_mask,
-            factors["neg_self_factor"]
+            factors["neg_self_factor"],
         )
         neg_slf_rec_loss.backward()
 
@@ -282,24 +269,22 @@ def f_step(
             slf_rec_loss = (pos_slf_rec_loss + neg_slf_rec_loss) / 2
             return slf_rec_loss, 0, 0
 
-        pos_cyc_rec_loss, pos_gen_soft_tokens, pos_gen_lengths = \
-            cycle_reconstruction(
-                pos_tokens,
-                pos_lengths,
-                pos_raw_styles,
-                pos_rev_styles,
-                pos_token_mask,
-                factors["pos_cycle_factor"]
-            )
-        neg_cyc_rec_loss, neg_gen_soft_tokens, neg_gen_lengths = \
-            cycle_reconstruction(
-                neg_tokens,
-                neg_lengths,
-                neg_raw_styles,
-                neg_rev_styles,
-                neg_token_mask,
-                factors["neg_cycle_factor"]
-            )
+        pos_cyc_rec_loss, pos_gen_soft_tokens, pos_gen_lengths = cycle_reconstruction(
+            pos_tokens,
+            pos_lengths,
+            pos_raw_styles,
+            pos_rev_styles,
+            pos_token_mask,
+            factors["pos_cycle_factor"],
+        )
+        neg_cyc_rec_loss, neg_gen_soft_tokens, neg_gen_lengths = cycle_reconstruction(
+            neg_tokens,
+            neg_lengths,
+            neg_raw_styles,
+            neg_rev_styles,
+            neg_token_mask,
+            factors["neg_cycle_factor"],
+        )
 
         # style consistency loss
         pos_adv_loss = style_consistency(
@@ -321,21 +306,19 @@ def f_step(
         # update parameters
         optimizer_F.step()
 
-        slf_rec_loss = (pos_slf_rec_loss + neg_slf_rec_loss)
-        cyc_rec_loss = (pos_cyc_rec_loss + neg_cyc_rec_loss)
-        adv_loss = (pos_adv_loss + neg_adv_loss)
+        slf_rec_loss = pos_slf_rec_loss + neg_slf_rec_loss
+        cyc_rec_loss = pos_cyc_rec_loss + neg_cyc_rec_loss
+        adv_loss = pos_adv_loss + neg_adv_loss
     else:
-        inp_tokens, inp_lengths, raw_styles = batch_preprocess(batch, pad_idx, eos_idx, split=False)
+        inp_tokens, inp_lengths, raw_styles = batch_preprocess(
+            batch, pad_idx, eos_idx, split=False
+        )
         rev_styles = 1 - raw_styles
         token_mask = (inp_tokens != pad_idx).float()
 
         # self reconstruction
         slf_rec_loss = self_reconstruction(
-            inp_tokens,
-            inp_lengths,
-            raw_styles,
-            token_mask,
-            factors["self_factor"],
+            inp_tokens, inp_lengths, raw_styles, token_mask, factors["self_factor"]
         )
         slf_rec_loss.backward()
 
@@ -351,15 +334,12 @@ def f_step(
             raw_styles,
             rev_styles,
             token_mask,
-            factors["cycle_factor"]
+            factors["cycle_factor"],
         )
 
         # style consistency loss
         adv_loss = style_consistency(
-            gen_soft_tokens,
-            gen_lengths,
-            rev_styles,
-            factors["adv_factor"]
+            gen_soft_tokens, gen_lengths, rev_styles, factors["adv_factor"]
         )
 
         (cyc_rec_loss + adv_loss).backward()
@@ -373,15 +353,7 @@ def f_step(
 
 
 def train(
-    config,
-    vocab,
-    model_F,
-    model_D,
-    opt_F,
-    opt_D,
-    train_iters,
-    test_iters,
-    evaluator,
+    config, vocab, model_F, model_D, opt_F, opt_D, train_iters, test_iters, evaluator
 ):
     his_d_adv_loss = []
     his_f_slf_loss = []
@@ -421,7 +393,7 @@ def train(
             inp_drop_prob=word_drop_prob,
             factors=factors,
             cyc_rec_enable=False,
-            split=trainer_cfg["split_pretrain_data"]
+            split=trainer_cfg["split_pretrain_data"],
         )
         his_f_slf_loss.append(slf_loss)
         his_f_cyc_loss.append(cyc_loss)
@@ -439,13 +411,10 @@ def train(
 
         if trainer_cfg["split_pretrain_data"]:
             factors = update_factor_rate(
-                factors,
-                trainer_cfg["pos_update_rate"],
-                trainer_cfg["neg_update_rate"]
+                factors, trainer_cfg["pos_update_rate"], trainer_cfg["neg_update_rate"]
             )
 
     print("Training start......")
-
     def calc_temperature(temperature_config, step):
         num = len(temperature_config)
         for i in range(num):
@@ -482,7 +451,7 @@ def train(
                 inp_drop_prob=word_drop_prob,
                 factors=factors,
                 cyc_rec_enable=True,
-                split=trainer_cfg["split_train_data"]
+                split=trainer_cfg["split_train_data"],
             )
             his_f_slf_loss.append(f_slf_loss)
             his_f_cyc_loss.append(f_cyc_loss)
@@ -490,9 +459,7 @@ def train(
 
         if trainer_cfg["split_train_data"]:
             factors = update_factor_rate(
-                factors,
-                trainer_cfg["pos_update_rate"],
-                trainer_cfg["neg_update_rate"]
+                factors, trainer_cfg["pos_update_rate"], trainer_cfg["neg_update_rate"]
             )
 
         global_step += 1
@@ -541,13 +508,14 @@ def train(
                 model_F=model_F,
                 test_iters=test_iters,
                 global_step=global_step,
-                temperature=temperature
+                temperature=temperature,
             )
 
 
-def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temperature):
+def auto_eval(
+    save_dir, evaluator, vocab, model_F, test_iters, global_step, temperature
+) -> Tuple[List[str], List[str], List[str]]:
     model_F.eval()
-    # vocab_size = len(vocab)
     eos_idx = vocab.stoi["<eos>"]
 
     def inference(data_iter, raw_style):
@@ -582,9 +550,9 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
                     temperature=temperature,
                 )
 
-            gold_text += tensor2text(vocab, inp_tokens.cpu())
-            raw_output += tensor2text(vocab, raw_log_probs.argmax(-1).cpu())
-            rev_output += tensor2text(vocab, rev_log_probs.argmax(-1).cpu())
+            gold_text += indice2text(inp_tokens.cpu(), vocab)
+            raw_output += indice2text(raw_log_probs.argmax(-1).cpu(), vocab)
+            rev_output += indice2text(rev_log_probs.argmax(-1).cpu(), vocab)
 
         return gold_text, raw_output, rev_output
 
@@ -595,20 +563,11 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
         inference(neg_iter, 0), inference(pos_iter, 1)
     )
 
-    # ref_text = evaluator.yelp_ref
-
     style_labels = evaluator.style_labels
-
-    acc_neg = evaluator.get_style_accuracy(rev_output[0], style_labels[0])
-    acc_pos = evaluator.get_style_accuracy(rev_output[1], style_labels[1])
+    acc_neg = evaluator.get_style_accuracy(rev_output[0], style_labels[1])
+    acc_pos = evaluator.get_style_accuracy(rev_output[1], style_labels[0])
     bleu_neg = evaluator.get_self_bleu_score(gold_text[0], rev_output[0])
     bleu_pos = evaluator.get_self_bleu_score(gold_text[1], rev_output[1])
-    # acc_neg = evaluator.yelp_acc_0(rev_output[0])
-    # acc_pos = evaluator.yelp_acc_1(rev_output[1])
-    # bleu_neg = evaluator.source_target_bleu(gold_text[0], rev_output[0])
-    # bleu_pos = evaluator.source_target_bleu(gold_text[1], rev_output[1])
-    # bleu_neg = evaluator.get_reference_bleu_score(rev_output[0], style_labels[0])
-    # bleu_pos = evaluator.get_reference_bleu_score(rev_output[1], style_labels[1])
     ppl_neg = evaluator.get_perplexity(rev_output[0])
     ppl_pos = evaluator.get_perplexity(rev_output[1])
 
@@ -618,7 +577,8 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
         print("[gold]", gold_text[0][idx])
         print("[raw ]", raw_output[0][idx])
         print("[rev ]", rev_output[0][idx])
-        # print("[ref ]", ref_text[0][idx])
+        if evaluator.reference:
+            print("[ref ]", evaluator.reference[style_labels[1]][idx])
 
     print("*" * 20, "********", "*" * 20)
 
@@ -628,7 +588,8 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
         print("[gold]", gold_text[1][idx])
         print("[raw ]", raw_output[1][idx])
         print("[rev ]", rev_output[1][idx])
-        # print("[ref ]", ref_text[1][idx])
+        if evaluator.reference:
+            print("[ref ]", evaluator.reference[style_labels[0]][idx])
 
     print("*" * 20, "********", "*" * 20)
 
@@ -658,10 +619,9 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
         print(
             (
                 "[auto_eval] acc_pos: {:.4f} acc_neg: {:.4f} "
-                # + "bleu_pos: {:.4f} bleu_neg: {:.4f} "
+                + "bleu_pos: {:.4f} bleu_neg: {:.4f} "
                 + "ppl_pos: {:.4f} ppl_neg: {:.4f}\n"
-            ).format(acc_pos, acc_neg, ppl_pos, ppl_neg),
-            # ).format(acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg),
+            ).format(acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg),
             file=fw,
         )
 
@@ -670,7 +630,8 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
             print("[gold]", gold_text[0][idx], file=fw)
             print("[raw ]", raw_output[0][idx], file=fw)
             print("[rev ]", rev_output[0][idx], file=fw)
-            # print("[ref ]", ref_text[0][idx], file=fw)
+            if evaluator.reference:
+                print("[ref ]", evaluator.reference[style_labels[1]][idx], file=fw)
 
         print("*" * 20, "********", "*" * 20, file=fw)
 
@@ -679,7 +640,8 @@ def auto_eval(save_dir, evaluator, vocab, model_F, test_iters, global_step, temp
             print("[gold]", gold_text[1][idx], file=fw)
             print("[raw ]", raw_output[1][idx], file=fw)
             print("[rev ]", rev_output[1][idx], file=fw)
-            # print("[ref ]", ref_text[1][idx], file=fw)
+            if evaluator.reference:
+                print("[ref ]", evaluator.reference[style_labels[0]][idx], file=fw)
 
         print("*" * 20, "********", "*" * 20, file=fw)
 
