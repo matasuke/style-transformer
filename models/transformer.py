@@ -33,12 +33,15 @@ class StyleTransformer(nn.Module):
         self.pad_idx = vocab.stoi["<pad>"]
         self.style_embed = nn.Embedding(num_styles, hidden_dim)
         self.embed = EmbeddingLayer(
-            vocab,
+            len(vocab),
             hidden_dim,
             max_seq_len,
+            dropout,
             self.pad_idx,
-            load_pretrained_embed,
         )
+        if load_pretrained_embed:
+            self.embed.load_vocab_embedding(vocab.vectors)
+
         self.sos_token = nn.Parameter(torch.randn(hidden_dim))
         self.encoder = Encoder(num_layers, hidden_dim,
                                len(vocab), num_heads, dropout)
@@ -46,8 +49,7 @@ class StyleTransformer(nn.Module):
                                len(vocab), num_heads, dropout)
 
         # reset parameters
-        nn.init.xavier_uniform_(self.style_embed.weight)
-        nn.init.constant_(self.style_embed.weight[None], 0)
+        nn.init.constant_(self.style_embed.weight, 0)
 
     def forward(
         self,
@@ -125,9 +127,6 @@ class StyleTransformer(nn.Module):
                     next_token = self.embed(
                         log_prob.argmax(-1), pos_idx[:, k: k + 1])
 
-                # if (pred_tokens == self.eos_idx).max(-1)[0].min(-1)[0].item() == 1:
-                #    break
-
             log_probs = torch.cat(log_probs, 1)
 
         return log_probs
@@ -163,19 +162,21 @@ class Discriminator(nn.Module):
         self.pad_idx = vocab.stoi["<pad>"]
         self.style_embed = nn.Embedding(num_styles, hidden_dim)
         self.embed = EmbeddingLayer(
-            vocab,
+            len(vocab),
             hidden_dim,
             max_seq_len,
+            dropout,
             self.pad_idx,
-            load_pretrained_embed,
         )
+        if load_pretrained_embed:
+            self.embed.load_vocab_embedding(vocab.vectors)
+
         self.cls_token = nn.Parameter(torch.randn(hidden_dim))
         self.encoder = Encoder(num_layers, hidden_dim, len(vocab), num_heads, dropout)
         self.classifier = nn.Linear(hidden_dim, self.num_classes)
 
         # reset parameters
-        nn.init.xavier_uniform_(self.style_embed.weight)
-        nn.init.constant_(self.style_embed.weight[None], 0)
+        nn.init.constant_(self.style_embed.weight, 0)
         nn.init.xavier_uniform_(self.classifier.weight)
         nn.init.constant_(self.classifier.bias, 0.0)
 
